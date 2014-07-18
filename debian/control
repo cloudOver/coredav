@@ -1,0 +1,14 @@
+Source: coredav
+Section: contrib
+Priority: extra
+Maintainer: Maciej Nabozny <mn@mnabozny.pl>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.4
+Homepage: http://cloudover.org/coredav/
+
+Package: coredav
+Architecture: all
+Depends: overcluster-core
+Description: Core package of OverCluster
+ This package contains core components to run basic version of OverCluster.
+

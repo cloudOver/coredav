@@ -1,0 +1,20 @@
+<VirtualHost *:8700>
+#        SSLEngine on
+#        SSLCertificateFile /etc/cc1/cm/cc1.pem
+#        SSLCertificateKeyFile /etc/cc1/cm/cc1.pem
+    DocumentRoot "/usr/lib/cloudOver/overCluster"
+    WSGIDaemonProcess coreDav user=cloudover group=cloudover processes=1 threads=10
+    WSGIScriptAlias / /usr/lib/cloudOver/overCluster/wsgi_coredav.py
+    ErrorLog /var/log/cloudOver/coreDav/access.log
+    <Directory /usr/lib/cloudOver/overCluster>
+        WSGIProcessGroup coreDav
+        WSGIApplicationGroup %{GLOBAL}
+        Order deny,allow
+        # For modern apache versions, uncomment following line and
+        # comment out allow from all
+#       Require all granted
+        Allow from all
+    </Directory>
+</VirtualHost>
+
+Listen 8000
