@@ -17,12 +17,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import libvirt
+
 from django.shortcuts import render
 from django.http import HttpResponse
 
 from overCluster.models.core.image import Image
 from overCluster.models.core.user import User
-
+from overCluster.models.core.task import Task
+from overCluster.utils import log
 
 def call_options(request, token, type):
     response = HttpResponse()
@@ -36,12 +39,14 @@ def call_propfind(request, token, type):
     response = '''<?xml version="1.0" encoding="UTF-8"?>
         <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
            <d:response>
-              <d:href>/browse/%(type)s/%(token)s/</d:href>
+              <d:href>/storage/%(type)s/%(token)s/</d:href>
               <d:propstat>
                  <d:prop>
                     <oc:id>0000000252400eaba833a</oc:id>
                     <d:getlastmodified>Fri, 18 Jul 2014 11:55:47 GMT</d:getlastmodified>
-                    <d:resourcetype/>
+                    <d:resourcetype>
+                      <d:collection/>
+                    </d:resourcetype>
                  </d:prop>
                  <d:status>HTTP/1.1 200 OK</d:status>
               </d:propstat>
@@ -60,12 +65,14 @@ def call_propfind(request, token, type):
     }
 
     for image in Image.objects.filter(user=user).filter(type=Image.image_types[type]).all():
+        log.debug(user.id, "CoreDav.propfind: Lisging image %d" % image.id)
         response += '''<d:response>
-                         <d:href>/browse/%(type)s/%(token)s</d:href>
+                         <d:href>%(image_id)d</d:href>
                          <d:propstat>
                             <d:prop>
                                <d:getcontentlength>%(image_size)d</d:getcontentlength>
                                <d:getlastmodified>%(modified)s</d:getlastmodified>
+                               <d:name>%(name)s</d:name>
                                <d:resourcetype />
                             </d:prop>
                             <d:status>HTTP/1.1 200 OK</d:status>
@@ -82,21 +89,85 @@ def call_propfind(request, token, type):
             'type': type,
             'token': token,
             'image_size': image.size,
+            'image_id': image.id,
+            'name': image.name,
             'modified': image.creation_date
         }
 
     response += '''</d:multistatus>'''
     response_object = HttpResponse(response)
     response_object.status_code = 207
+    f = open('/tmp/log', 'a')
+    f.write(response)
+    f.close()
     return response_object
 
 
+def call_delete(request, token, type, id):
+    user = User.get_token(token)
+    image = Image.objects.filter(user=user).get(pk=id)
+
+    task = Task()
+    task.type = Task.task_types['image']
+    task.state = Task.states['not active']
+    task.image = image
+    task.setAllProps({'action': 'delete'})
+    task.addAfterImage()
+
+    response = HttpResponse()
+    response.status_code = 200
+    return response
+
+
+def call_get(request, token, type, id):
+    user = User.get_token(token)
+    image = Image.objects.filter(user=user).get(pk=id)
+
+    conn = libvirt.open('qemu:///system')
+    storage = conn.storagePoolLookupByName(image.storage.name)
+    if storage.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
+        response = HttpResponse()
+        response.status_code = 500
+        response.reason_phrase = 'Storage unavailable'
+        return response
+
+    volume = storage.storageVolLookupByName("%d_%d" % (image.user.id, image.id))
+    stream = conn.newStream()
+
+    try:
+        response = HttpResponse(volume.download(stream, 0, volume.info()[1]))
+        conn.close()
+        return response
+    except Exception, e:
+        log.error(0, str(e))
+        response = HttpResponse()
+        response.status_code = 500
+        return response
+
+
+def action(request, token, type, id):
+    print "Action: " + request.method + " " + request.path
+    try:
+        if request.method == 'DELETE':
+            return call_delete(request, token, type, id)
+        elif request.method == 'GET':
+            return call_get(request, token, type, id)
+        elif request.method == 'PROPFIND':
+            return call_propfind(request, token, type)
+	else:
+            return HttpResponse('webdav endpoint')
+    except Exception, e:
+        return HttpResponse(str(e))
+
+
 def browse(request, token, type):
-    print request.method
+    print "Browse: " + request.path
     try:
         if request.method == 'OPTIONS':
             return call_options(request, token, type)
-        if request.method == 'PROPFIND':
+        elif request.method == 'PROPFIND':
             return call_propfind(request, token, type)
+	else:
+            return HttpResponse('webdav endpoint')
     except Exception, e:
-        print str(e)
+        return HttpResponse(str(e))
