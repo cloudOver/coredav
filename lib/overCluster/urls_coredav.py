@@ -1,7 +1,7 @@
 """
 Copyright (c) 2014 Maciej Nabozny
 
-This file is part of OverCluster project.
+This file is part of CoreDav project.
 
 OverCluster is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,6 +22,6 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
-    url(r'^browse/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9]+)/', 'browse.views.browse', name='browse'),
-    url(r'^admin/', include(admin.site.urls)),
+    url(r'^storage/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9]+)/$', 'overCluster.views.coreDav.webdav.browse', name='browse'),
+    url(r'^storage/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9]+)/(?P<id>[0-9]+)/?$', 'overCluster.views.coreDav.webdav.action', name='action'),
 )
