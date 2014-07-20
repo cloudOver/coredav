@@ -1,3 +1,10 @@
+coredav (0.2) stable; urgency=low
+
+  * Working release
+  * Added minimal method set: PROPFIND, OPTIONS, DELETE and GET
+
+ -- Maciej Nabozny <mn@mnabozny.pl> 10 Jul 2014 20:09:44 +0200
+
 coredav (0.1.1) stable; urgency=low
 
   * Initial build
