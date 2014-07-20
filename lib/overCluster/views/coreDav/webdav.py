@@ -18,14 +18,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import libvirt
-
-from django.shortcuts import render
+import urllib
+import os
 from django.http import HttpResponse, StreamingHttpResponse
 
 from overCluster.models.core.image import Image
 from overCluster.models.core.user import User
 from overCluster.models.core.task import Task
 from overCluster.utils import log
+from overCluster import settings
 
 def call_options(request, token, type):
     response = HttpResponse()
@@ -65,14 +66,14 @@ def call_propfind(request, token, type):
     }
 
     for image in Image.objects.filter(user=user).filter(type=Image.image_types[type]).all():
-        log.debug(user.id, "CoreDav.propfind: Lisging image %d" % image.id)
+        if image.state != Image.states['ok']:
+            continue
         response += '''<d:response>
-                         <d:href>%(image_id)d</d:href>
+                         <d:href>%(image_name)s</d:href>
                          <d:propstat>
                             <d:prop>
                                <d:getcontentlength>%(image_size)d</d:getcontentlength>
                                <d:getlastmodified>%(modified)s</d:getlastmodified>
-                               <d:name>%(name)s</d:name>
                                <d:resourcetype />
                             </d:prop>
                             <d:status>HTTP/1.1 200 OK</d:status>
@@ -89,8 +90,8 @@ def call_propfind(request, token, type):
             'type': type,
             'token': token,
             'image_size': image.size,
-            'image_id': image.id,
-            'name': image.name,
+            'image_name': urllib.quote_plus(image.name),
+            #'image_name': image.name,
             'modified': image.creation_date
         }
 
@@ -103,9 +104,19 @@ def call_propfind(request, token, type):
     return response_object
 
 
-def call_delete(request, token, type, id):
+def call_delete(request, token, type, name):
     user = User.get_token(token)
-    image = Image.objects.filter(user=user).get(pk=id)
+    images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
+    image = None
+    for i in images:
+        if name == urllib.quote_plus(i.name):
+            image = i
+
+    if image == None:
+        response = HttpResponse()
+        response.status_code = 404
+        response.reason_phrase = "Not found"
+        return response
 
     task = Task()
     task.type = Task.task_types['image']
@@ -119,9 +130,65 @@ def call_delete(request, token, type, id):
     return response
 
 
-def call_get(request, token, type, id):
+def call_put(request, token, type, name):
+    log.debug(0, request.body)
     user = User.get_token(token)
-    image = Image.objects.filter(user=user).get(pk=id)
+    user.check_storage(len(request.body))
+
+    filename = os.path.join(settings.UPLOAD_DIR, 'oc_upload_%d' % user.id)
+    if os.path.exists(filename):
+        response = HttpResponse()
+        response.status_code = 403
+        response.reason_phrase = "You have upload active"
+        return response
+
+    if len(request.body) > settings.MAX_UPLOAD_CHUNK_SIZE:
+        response = HttpResponse()
+        response.status_code = 403
+        response.reason_phrase = "File too large"
+        return response
+
+    f = open(filename, 'w')
+    f.write(request.body)
+    f.close()
+
+    image = Image.create(user, name, "", len(request.body), type, 'virtio', 'private')
+    image.save()
+
+    task = Task()
+    task.type = Task.task_types['image']
+    task.state = Task.states['not active']
+    task.image = image
+    task.storage = image.storage
+    task.setAllProps({'action': 'create'})
+    task.addAfterStorage()
+
+    task = Task()
+    task.type = Task.task_types['image']
+    task.state = Task.states['not active']
+    task.image = image
+    task.setAllProps({'action': 'upload_data',
+                      'offset': 0,
+                      'size': len(request.body),
+                      'filename': filename})
+    task.addAfterImage()
+
+    return HttpResponse()
+
+
+def call_get(request, token, type, name):
+    user = User.get_token(token)
+    images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
+    image = None
+    for i in images:
+        if name == urllib.quote_plus(i.name):
+            image = i
+
+    if image == None:
+        response = HttpResponse()
+        response.status_code = 404
+        response.reason_phrase = "Not found"
+        return response
 
     conn = libvirt.open('qemu:///system')
     storage = conn.storagePoolLookupByName(image.storage.name)
@@ -143,7 +210,6 @@ def call_get(request, token, type, id):
                 if len(chunk) == 0:
                     break
                 yield chunk
-                log.debug(0, "Uploaded %d bytes from chunk starting at %d" % (len(chunk), bytes))
                 bytes += len(chunk)
 
 
@@ -158,13 +224,15 @@ def call_get(request, token, type, id):
         return response
 
 
-def action(request, token, type, id):
+def action(request, token, type, name):
     print "Action: " + request.method + " " + request.path
     try:
         if request.method == 'DELETE':
-            return call_delete(request, token, type, id)
+            return call_delete(request, token, type, name)
         elif request.method == 'GET':
-            return call_get(request, token, type, id)
+            return call_get(request, token, type, name)
+        elif request.method == 'PUT':
+            return call_put(request, token, type, name)
         elif request.method == 'PROPFIND':
             return call_propfind(request, token, type)
 	else:
@@ -174,7 +242,7 @@ def action(request, token, type, id):
 
 
 def browse(request, token, type):
-    print "Browse: " + request.path
+    print "Action: " + request.method + " " + request.path
     try:
         if request.method == 'OPTIONS':
             return call_options(request, token, type)
