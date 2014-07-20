@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import libvirt
 
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 
 from overCluster.models.core.image import Image
 from overCluster.models.core.user import User
@@ -131,11 +131,24 @@ def call_get(request, token, type, id):
         response.reason_phrase = 'Storage unavailable'
         return response
 
+    storage.refresh(0)
     volume = storage.storageVolLookupByName("%d_%d" % (image.user.id, image.id))
     stream = conn.newStream()
 
     try:
-        response = HttpResponse(volume.download(stream, 0, volume.info()[1]))
+        def downloader(size):
+            bytes = 0
+            while bytes < size:
+                chunk = stream.recv(1024*1024)
+                if len(chunk) == 0:
+                    break
+                yield chunk
+                log.debug(0, "Uploaded %d bytes from chunk starting at %d" % (len(chunk), bytes))
+                bytes += len(chunk)
+
+
+        volume.download(stream, 0, volume.info()[1])
+        response = StreamingHttpResponse(downloader(volume.info()[1]), content_type="text/plain")
         conn.close()
         return response
     except Exception, e:
