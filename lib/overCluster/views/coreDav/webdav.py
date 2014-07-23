@@ -25,8 +25,24 @@ from django.http import HttpResponse, StreamingHttpResponse
 from overCluster.models.core.image import Image
 from overCluster.models.core.user import User
 from overCluster.models.core.task import Task
+from overCluster.models.core.token import Token
 from overCluster.utils import log
+from overCluster.utils.decorators import api_log
 from overCluster import settings
+
+@api_log(log=True)
+def enable_webdav(caller_id, token_string):
+    user = User.get(caller_id)
+    token = Token.objects.filter(uesr=user).filter(token=token_string).get()
+    token.set_prop('webdav_enabled', True)
+
+
+@api_log(log=True)
+def disable_webdav(caller_id, token_string):
+    user = User.get(caller_id)
+    token = Token.objects.filter(uesr=user).filter(token=token_string).get()
+    token.set_prop('webdav_enabled', False)
+
 
 def call_options(request, token, type):
     response = HttpResponse()
@@ -37,6 +53,7 @@ def call_options(request, token, type):
 
 def call_propfind(request, token, type):
     user = User.get_token(token)
+
     response = '''<?xml version="1.0" encoding="UTF-8"?>
         <d:multistatus xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:s="http://sabredav.org/ns">
            <d:response>
@@ -106,6 +123,7 @@ def call_propfind(request, token, type):
 
 def call_delete(request, token, type, name):
     user = User.get_token(token)
+
     images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
     image = None
     for i in images:
@@ -131,7 +149,6 @@ def call_delete(request, token, type, name):
 
 
 def call_put(request, token, type, name):
-    log.debug(0, request.body)
     user = User.get_token(token)
     user.check_storage(len(request.body))
 
@@ -178,6 +195,7 @@ def call_put(request, token, type, name):
 
 def call_get(request, token, type, name):
     user = User.get_token(token)
+
     images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
     image = None
     for i in images:
@@ -225,7 +243,15 @@ def call_get(request, token, type, name):
 
 
 def action(request, token, type, name):
-    print "Action: " + request.method + " " + request.path
+    user = User.get_token(token)
+    token = Token.objects.filter(uesr=user).filter(token=token).get()
+    if not token.get_prop('webdav_enabled', False):
+        response = HttpResponse()
+        response.status_code = 403
+        response.reason_phrase = 'This token is not allowed for webdav'
+        return response
+
+
     try:
         if request.method == 'DELETE':
             return call_delete(request, token, type, name)
@@ -235,20 +261,27 @@ def action(request, token, type, name):
             return call_put(request, token, type, name)
         elif request.method == 'PROPFIND':
             return call_propfind(request, token, type)
-	else:
+        else:
             return HttpResponse('webdav endpoint')
     except Exception, e:
         return HttpResponse(str(e))
 
 
 def browse(request, token, type):
-    print "Action: " + request.method + " " + request.path
+    user = User.get_token(token)
+    token = Token.objects.filter(uesr=user).filter(token=token).get()
+    if not token.get_prop('webdav_enabled', False):
+        response = HttpResponse()
+        response.status_code = 403
+        response.reason_phrase = 'This token is not allowed for webdav'
+        return response
+
     try:
         if request.method == 'OPTIONS':
             return call_options(request, token, type)
         elif request.method == 'PROPFIND':
             return call_propfind(request, token, type)
-	else:
+        else:
             return HttpResponse('webdav endpoint')
     except Exception, e:
         return HttpResponse(str(e))
