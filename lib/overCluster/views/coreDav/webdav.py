@@ -27,21 +27,26 @@ from overCluster.models.core.user import User
 from overCluster.models.core.task import Task
 from overCluster.models.core.token import Token
 from overCluster.utils import log
-from overCluster.utils.decorators import api_log
+from overCluster.utils.decorators import user_log
+from overCluster.utils.exception import CMException
 from overCluster import settings
 
-@api_log(log=True)
-def enable_webdav(caller_id, token_string):
-    user = User.get(caller_id)
-    token = Token.objects.filter(uesr=user).filter(token=token_string).get()
-    token.set_prop('webdav_enabled', True)
 
+@user_log(log=True)
+def enable(login, pw_hash, token_id, enable):
+    """ Enable or disable webdav for given token
 
-@api_log(log=True)
-def disable_webdav(caller_id, token_string):
-    user = User.get(caller_id)
-    token = Token.objects.filter(uesr=user).filter(token=token_string).get()
-    token.set_prop('webdav_enabled', False)
+    :param token_id: Id of token, which should be available as webdav resource
+    :param enable: Should be this token enabled (True) or disabled (False)
+    """
+    try:
+        user = User.get_login(login, pw_hash)
+    except Exception, e:
+        raise CMException('auth_failure')
+
+    token = Token.objects.filter(user=user).get(pk=token_id)
+    token.setProp('webdav_enabled', enable)
+    token.save()
 
 
 def call_options(request, token, type):
