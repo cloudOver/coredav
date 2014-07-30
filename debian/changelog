@@ -1,3 +1,10 @@
+coredav (0.3.2) stable; urgency=low
+
+  * Changed setProp/getProp to set_prop/get_prot due to database refactoring
+
+ -- Maciej Nabozny <mn@mnabozny.pl> 29 Jul 2014 10:09:44 +0200
+
+
 coredav (0.3.1) stable; urgency=low
 
   * Added support for webdav_enabled in token's data field, which defines if with given token webdav could be accessed

@@ -45,7 +45,7 @@ def enable(login, pw_hash, token_id, enable):
         raise CMException('auth_failure')
 
     token = Token.objects.filter(user=user).get(pk=token_id)
-    token.setProp('webdav_enabled', enable)
+    token.set_prop('webdav_enabled', enable)
     token.save()
 
 
@@ -145,7 +145,7 @@ def call_delete(request, token, type, name):
     task.type = Task.task_types['image']
     task.state = Task.states['not active']
     task.image = image
-    task.setAllProps({'action': 'delete'})
+    task.set_all_props({'action': 'delete'})
     task.addAfterImage()
 
     response = HttpResponse()
@@ -182,14 +182,14 @@ def call_put(request, token, type, name):
     task.state = Task.states['not active']
     task.image = image
     task.storage = image.storage
-    task.setAllProps({'action': 'create'})
+    task.set_all_props({'action': 'create'})
     task.addAfterStorage()
 
     task = Task()
     task.type = Task.task_types['image']
     task.state = Task.states['not active']
     task.image = image
-    task.setAllProps({'action': 'upload_data',
+    task.set_all_props({'action': 'upload_data',
                       'offset': 0,
                       'size': len(request.body),
                       'filename': filename})
