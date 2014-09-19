@@ -1,3 +1,10 @@
+coredav (0.3.3) stable; urgency=low
+
+  * Put creates empty (raw) image instead qcow.
+
+ -- Maciej Nabozny <mn@mnabozny.pl> 19 Sep 2014 10:09:44 +0200
+
+
 coredav (0.3.2) stable; urgency=low
 
   * Changed setProp/getProp to set_prop/get_prot due to database refactoring

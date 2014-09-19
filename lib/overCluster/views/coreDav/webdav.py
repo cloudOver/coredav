@@ -142,10 +142,10 @@ def call_delete(request, token, type, name):
         return response
 
     task = Task()
-    task.type = Task.task_types['image']
+    task.type = 'image'
+    task.action = 'delete'
     task.state = Task.states['not active']
     task.image = image
-    task.set_all_props({'action': 'delete'})
     task.addAfterImage()
 
     response = HttpResponse()
@@ -167,32 +167,32 @@ def call_put(request, token, type, name):
     if len(request.body) > settings.MAX_UPLOAD_CHUNK_SIZE:
         response = HttpResponse()
         response.status_code = 403
-        response.reason_phrase = "File too large"
+        response.reason_phrase = "File too large (max. size %d)" % settings.MAX_UPLOAD_CHUNK_SIZE
         return response
 
     f = open(filename, 'w')
     f.write(request.body)
     f.close()
 
-    image = Image.create(user, name, "", len(request.body), type, 'virtio', 'private')
+    image = Image.create(user, name, "", len(request.body), type, 'virtio', 'private', 'raw')
     image.save()
 
     task = Task()
-    task.type = Task.task_types['image']
+    task.type = 'image'
+    task.action = 'create'
     task.state = Task.states['not active']
     task.image = image
     task.storage = image.storage
-    task.set_all_props({'action': 'create'})
     task.addAfterStorage()
 
     task = Task()
-    task.type = Task.task_types['image']
+    task.type = 'image'
+    task.action = 'upload_data'
     task.state = Task.states['not active']
     task.image = image
-    task.set_all_props({'action': 'upload_data',
-                      'offset': 0,
-                      'size': len(request.body),
-                      'filename': filename})
+    task.set_all_props({'offset': 0,
+                        'size': len(request.body),
+                        'filename': filename})
     task.addAfterImage()
 
     return HttpResponse()
