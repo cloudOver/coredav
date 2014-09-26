@@ -249,7 +249,7 @@ def call_get(request, token, type, name):
 
 def action(request, token, type, name):
     user = User.get_token(token)
-    token = Token.objects.filter(uesr=user).filter(token=token).get()
+    token = Token.objects.filter(user=user).filter(token=token).get()
     if not token.get_prop('webdav_enabled', False):
         response = HttpResponse()
         response.status_code = 403
@@ -274,7 +274,7 @@ def action(request, token, type, name):
 
 def browse(request, token, type):
     user = User.get_token(token)
-    token = Token.objects.filter(uesr=user).filter(token=token).get()
+    token = Token.objects.filter(user=user).filter(token=token).get()
     if not token.get_prop('webdav_enabled', False):
         response = HttpResponse()
         response.status_code = 403
