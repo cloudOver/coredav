@@ -1,18 +1,18 @@
-oredav (0.3.5) stable; urgency=low
+coredav (0.3.5) stable; urgency=low
 
   * Fixed typo in views
 
  -- Maciej Nabozny <mn@mnabozny.pl> 27 Sep 2014 10:09:44 +0200
 
 
-oredav (0.3.4) stable; urgency=low
+coredav (0.3.4) stable; urgency=low
 
   * Fixed typo in views
 
  -- Maciej Nabozny <mn@mnabozny.pl> 26 Sep 2014 10:09:44 +0200
 
 
-ccoredav (0.3.3) stable; urgency=low
+coredav (0.3.3) stable; urgency=low
 
   * Put creates empty (raw) image instead qcow.
 
