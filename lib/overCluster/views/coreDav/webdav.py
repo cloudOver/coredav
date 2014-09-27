@@ -174,7 +174,7 @@ def call_put(request, token, type, name):
     f.write(request.body)
     f.close()
 
-    image = Image.create(user, name, "", len(request.body), type, 'virtio', 'private', 'raw')
+    image = Image.create(user, name, "", 1, type, 'virtio', 'private', 'raw')
     image.save()
 
     task = Task()
@@ -223,7 +223,7 @@ def call_get(request, token, type, name):
 
     storage.refresh(0)
     volume = storage.storageVolLookupByName("%d_%d" % (image.user.id, image.id))
-    stream = conn.newStream()
+    stream = conn.newStream(0)
 
     try:
         def downloader(size):
@@ -236,7 +236,7 @@ def call_get(request, token, type, name):
                 bytes += len(chunk)
 
 
-        volume.download(stream, 0, volume.info()[1])
+        volume.download(stream, 0, volume.info()[1], 0)
         response = StreamingHttpResponse(downloader(volume.info()[1]), content_type="text/plain")
         conn.close()
         return response
