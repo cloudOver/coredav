@@ -247,6 +247,26 @@ def call_get(request, token, type, name):
         return response
 
 
+def call_move(request, token, type, name):
+    user = User.get_token(token)
+
+    images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
+    image = None
+    for i in images:
+        if name == urllib.quote_plus(i.name):
+            image = i
+
+    if image == None:
+        response = HttpResponse()
+        response.status_code = 404
+        response.reason_phrase = "Not found"
+        return response
+
+    image.name = os.path.basename(request.META['HTTP_DESTINATION'])
+    image.save()
+    return HttpResponse()
+
+
 def action(request, token, type, name):
     user = User.get_token(token)
     token = Token.objects.filter(user=user).filter(token=token).get()
@@ -266,6 +286,8 @@ def action(request, token, type, name):
             return call_put(request, token, type, name)
         elif request.method == 'PROPFIND':
             return call_propfind(request, token, type)
+        elif request.method == 'MOVE':
+            return call_move(request, token, type, name)
         else:
             return HttpResponse('webdav endpoint')
     except Exception, e:
