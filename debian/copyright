@@ -1,6 +1,6 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: overcluster-core
-Source: <http://cloudover.org/overcluster/>
+Upstream-Name: coredav
+Source: <http://cloudover.org/>
 
 Files: *
 Copyright: 2014 Maciej Nabozny <mn@mnabozny.pl>

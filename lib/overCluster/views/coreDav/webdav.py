@@ -26,25 +26,19 @@ from overCluster.models.core.image import Image
 from overCluster.models.core.user import User
 from overCluster.models.core.task import Task
 from overCluster.models.core.token import Token
-from overCluster.utils import log
-from overCluster.utils.decorators import user_log
+from overCluster.utils.decorators import register
 from overCluster.utils.exception import CMException
 from overCluster import settings
 
 
-@user_log(log=True)
-def enable(login, pw_hash, token_id, enable):
+@register(auth='password')
+def enable(context, token_id, enable):
     """ Enable or disable webdav for given token
 
     :param token_id: Id of token, which should be available as webdav resource
     :param enable: Should be this token enabled (True) or disabled (False)
     """
-    try:
-        user = User.get_login(login, pw_hash)
-    except Exception, e:
-        raise CMException('auth_failure')
-
-    token = Token.objects.filter(user=user).get(pk=token_id)
+    token = Token.objects.filter(user=context.user).get(pk=token_id)
     token.set_prop('webdav_enabled', enable)
     token.save()
 
@@ -120,9 +114,6 @@ def call_propfind(request, token, type):
     response += '''</d:multistatus>'''
     response_object = HttpResponse(response)
     response_object.status_code = 207
-    f = open('/tmp/log', 'a')
-    f.write(response)
-    f.close()
     return response_object
 
 
@@ -241,7 +232,6 @@ def call_get(request, token, type, name):
         conn.close()
         return response
     except Exception, e:
-        log.error(0, str(e))
         response = HttpResponse()
         response.status_code = 500
         return response
