@@ -9,6 +9,5 @@ Homepage: http://cloudover.org/coredav/
 Package: coredav
 Architecture: all
 Depends: overcluster-core
-Description: Core package of OverCluster
- This package contains core components to run basic version of OverCluster.
+Description: WebDav service for object storage
 
