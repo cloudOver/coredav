@@ -38,7 +38,7 @@ def enable(context, token_id, enable):
     :param token_id: Id of token, which should be available as webdav resource
     :param enable: Should be this token enabled (True) or disabled (False)
     """
-    token = Token.objects.filter(user=context.user).get(pk=token_id)
+    token = Token.objects.filter(user=context.user).get(id=token_id)
     token.set_prop('webdav_enabled', enable)
     token.save()
 
@@ -81,8 +81,8 @@ def call_propfind(request, token, type):
         'token': token,
     }
 
-    for image in Image.objects.filter(user=user).filter(type=Image.image_types[type]).all():
-        if image.state != Image.states['ok']:
+    for image in Image.objects.filter(user=user).filter(type=type).all():
+        if image.state != 'ok':
             continue
         response += '''<d:response>
                          <d:href>%(image_name)s</d:href>
@@ -120,7 +120,7 @@ def call_propfind(request, token, type):
 def call_delete(request, token, type, name):
     user = User.get_token(token)
 
-    images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
+    images = Image.objects.filter(user=user).filter(state='ok').all()
     image = None
     for i in images:
         if name == urllib.quote_plus(i.name):
@@ -135,7 +135,7 @@ def call_delete(request, token, type, name):
     task = Task()
     task.type = 'image'
     task.action = 'delete'
-    task.state = Task.states['not active']
+    task.state = 'not active'
     task.image = image
     task.addAfterImage()
 
@@ -148,7 +148,7 @@ def call_put(request, token, type, name):
     user = User.get_token(token)
     user.check_storage(len(request.body))
 
-    filename = os.path.join(settings.UPLOAD_DIR, 'oc_upload_%d' % user.id)
+    filename = os.path.join(settings.UPLOAD_DIR, 'oc_upload_%s' % user.id)
     if os.path.exists(filename):
         response = HttpResponse()
         response.status_code = 403
@@ -171,7 +171,7 @@ def call_put(request, token, type, name):
     task = Task()
     task.type = 'image'
     task.action = 'create'
-    task.state = Task.states['not active']
+    task.state = 'not active'
     task.image = image
     task.storage = image.storage
     task.addAfterStorage()
@@ -179,7 +179,7 @@ def call_put(request, token, type, name):
     task = Task()
     task.type = 'image'
     task.action = 'upload_data'
-    task.state = Task.states['not active']
+    task.state = 'not active'
     task.image = image
     task.set_all_props({'offset': 0,
                         'size': len(request.body),
@@ -192,7 +192,7 @@ def call_put(request, token, type, name):
 def call_get(request, token, type, name):
     user = User.get_token(token)
 
-    images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
+    images = Image.objects.filter(user=user).filter(state='ok').all()
     image = None
     for i in images:
         if name == urllib.quote_plus(i.name):
@@ -213,7 +213,7 @@ def call_get(request, token, type, name):
         return response
 
     storage.refresh(0)
-    volume = storage.storageVolLookupByName("%d_%d" % (image.user.id, image.id))
+    volume = storage.storageVolLookupByName(image.libvirt_name)
     stream = conn.newStream(0)
 
     try:
@@ -240,7 +240,7 @@ def call_get(request, token, type, name):
 def call_move(request, token, type, name):
     user = User.get_token(token)
 
-    images = Image.objects.filter(user=user).filter(image_state=Image.states['ok']).all()
+    images = Image.objects.filter(user=user).filter(state='ok').all()
     image = None
     for i in images:
         if name == urllib.quote_plus(i.name):
