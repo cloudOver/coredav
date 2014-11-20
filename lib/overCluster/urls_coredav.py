@@ -22,6 +22,6 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
-    url(r'^storage/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9]+)/$', 'overCluster.views.coreDav.webdav.browse', name='browse'),
-    url(r'^storage/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9]+)/(?P<name>(?:(?!&#34;).)+)/?$', 'overCluster.views.coreDav.webdav.action', name='action'),
+    url(r'^storage/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9\-]+)/$', 'overCluster.views.coreDav.webdav.browse', name='browse'),
+    url(r'^storage/(?P<type>[a-zA-Z]+)/(?P<token>[a-zA-Z0-9\-]+)/(?P<name>(?:(?!&#34;).)+)/?$', 'overCluster.views.coreDav.webdav.action', name='action'),
 )
