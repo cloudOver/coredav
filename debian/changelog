@@ -1,3 +1,10 @@
+coredav (15.04) stable; urgency=low
+
+  * First date-based version
+
+ -- Maciej Nabozny <mn@mnabozny.pl> 13 Apr 2015 10:00:00 +0200
+
+
 coredav (0.4) stable; urgency=low
 
   * Compatibile with new 0.4+ versions of Core 
